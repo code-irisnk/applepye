@@ -202,7 +202,7 @@ async def scrobble_loop():
         while True:
             if is_apple_music_running():
                 current_song_info = await get_song_info()
-
+    
                 # Check if the player is currently playing
                 if await song_playing():
                     start_time = int(time.time())
@@ -211,6 +211,7 @@ async def scrobble_loop():
                     try:
                         song_duration = get_song_duration(
                             last_fm, current_song_info)
+                        print("Song duration:", song_duration)
                     except fm.WSError:
                         print(
                             "Error getting duration for:",
@@ -219,12 +220,13 @@ async def scrobble_loop():
                         )
                         print("Defaulting to 60 seconds.")
                         song_duration = 60
-                    threshold = int(song_duration / 2) - 1
-                    while playback_time <= threshold and await get_song_info():
+                    threshold = int(song_duration / 2) + 1
+                    while playback_time <= threshold and current_song_info:
                         await asyncio.sleep(1)
                         playback_time = int(time.time()) - start_time
                         print("Playback time:", playback_time)
                         print("Scrobble threshold:", threshold)
+                        current_song_info = await get_song_info()
                         if await song_playing() and playback_time >= threshold:
                             await scrobble(last_fm, current_song_info)
                             start_time = int(time.time())
