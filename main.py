@@ -8,7 +8,7 @@ import pylast as fm
 import psutil as ps
 import winsdk.windows.media.control as mc
 
-last_known_song=[None, None]
+previous_song_info=[None, None]
 
 def is_apple_music_running():
     """Checks if Apple Music is running on Windows.
@@ -112,14 +112,14 @@ async def update_now_playing(last_fm, song_info):
     Args:
         last_fm (pylast.LastFMNetwork): A Last.fm network object.
         song_info (dict): A dictionary containing the current song title and artist.
-        last_known_song (list): A list containing the last known song title and artist.
+        previous_song_info (list): A list containing the last known song title and artist.
     """
-    none_dict = dict(zip(last_known_song, [None, None]))
-    empty_dict = dict(zip(last_known_song, ["", ""]))
+    none_dict = dict(zip(previous_song_info, [None, None]))
+    empty_dict = dict(zip(previous_song_info, ["", ""]))
     if await song_playing() and song_info:  # Check if song_info is not empty
         if song_info not in (none_dict, empty_dict):
             try:
-                if song_info != last_known_song:
+                if song_info != previous_song_info:
                     last_fm.update_now_playing(
                         artist=song_info['artist'],
                         title=song_info['title']
@@ -129,7 +129,7 @@ async def update_now_playing(last_fm, song_info):
                         "-",
                         song_info['title']
                     )
-                    last_known_song[0], last_known_song[1] = song_info['artist'], song_info['title']
+                    previous_song_info[0], previous_song_info[1] = song_info['artist'], song_info['title']
             except fm.NetworkError as e:
                 print(f"Error updating 'now playing' on Last.fm: {e}")
 
