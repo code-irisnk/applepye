@@ -4,11 +4,13 @@
 import asyncio
 import time
 import json
+import threading
 import pylast as fm
 import psutil as ps
 import winsdk.windows.media.control as mc
 
-previous_song_info=[None, None]
+previous_song_info = [None, None]
+
 
 def is_apple_music_running():
     """Checks if Apple Music is running on Windows.
@@ -20,6 +22,7 @@ def is_apple_music_running():
         if proc.name() == 'AppleMusic.exe':
             return True
     return False
+
 
 async def get_song_info():
     """Gets the currently playing song's title and artist from Windows Media Controls.
@@ -46,6 +49,7 @@ async def get_song_info():
         print("No current session available.")
 
     return song_info
+
 
 async def song_playing():
     """Checks if a song is currently playing in Apple Music.
@@ -80,6 +84,7 @@ async def song_playing():
     print("No app is playing music.")
     return False
 
+
 def authenticate_last_fm():
     """Authenticates with Last.fm using the credentials stored in auth.json.
 
@@ -103,13 +108,13 @@ def authenticate_last_fm():
         print(f"Error: Missing key {e} in auth.json file")
     return None
 
+
 async def update_now_playing(last_fm, song_info):
     """Updates the 'now playing' information on Last.fm without scrobbling.
 
     Args:
         last_fm (pylast.LastFMNetwork): A Last.fm network object.
         song_info (dict): A dictionary containing the current song title and artist.
-        previous_song_info (list): A list containing the last known song title and artist.
     """
     none_dict = dict(zip(previous_song_info, [None, None]))
     empty_dict = dict(zip(previous_song_info, ["", ""]))
@@ -122,20 +127,22 @@ async def update_now_playing(last_fm, song_info):
                         title=song_info['title']
                     )
                     print("Updated 'now playing' on Last.fm:",
-                        song_info['artist'],
-                        "-", song_info['title']
-                    )
+                          song_info['artist'],
+                          "-", song_info['title']
+                          )
                     previous_song_info[0] = song_info['artist']
                     previous_song_info[1] = song_info['title']
             except fm.NetworkError as e:
                 print(f"Error updating 'now playing' on Last.fm: {e}")
 
+
 async def update_now_playing_thread(last_fm):
     """Thread function to update 'now playing' every 10 seconds."""
     while True:
         song_info = await get_song_info()
-        await update_now_playing(last_fm, song_info)
+        asyncio.run(update_now_playing(last_fm, song_info))
         time.sleep(10)
+
 
 async def scrobble(last_fm, song_info):
     """Scrobbles a song to Last.fm.
@@ -156,7 +163,8 @@ async def scrobble(last_fm, song_info):
             "-", song_info['title'],
             "at", timestamp,
             "to Last.fm."
-            )
+        )
+
 
 def get_song_duration(last_fm, song_info):
     """Gets the duration of the currently playing song from Last.fm.
@@ -175,6 +183,7 @@ def get_song_duration(last_fm, song_info):
         song_duration = 60
     return song_duration
 
+
 async def scrobble_loop():
     """ The main scrobbling loop.
     """
@@ -184,7 +193,9 @@ async def scrobble_loop():
         print("Successfully authenticated with Last.fm as " + last_fm.username + ".")
 
         # Start the 'now playing' update thread
-        asyncio.create_task(update_now_playing_thread(last_fm))
+        update_thread = threading.Thread(target=update_now_playing_thread, args=(last_fm,))
+        update_thread.daemon = True  # Set as daemon, so it terminates when the main thread ends
+        update_thread.start()
 
         while True:
             if is_apple_music_running():
@@ -227,7 +238,8 @@ async def scrobble_loop():
         print(
             "Last.fm authentication failed!",
             "Please check your credentials."
-            )
+        )
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
