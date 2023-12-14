@@ -27,7 +27,8 @@ async def get_song_info():
     Returns:
         dict: A dictionary containing the song title and artist.
     """
-    session_manager = await mc.GlobalSystemMediaTransportControlsSessionManager.request_async()
+    sys_controls = mc.GlobalSystemMediaTransportControlsSessionManager
+    session_manager = await sys_controls.request_async()
     current_session = session_manager.get_current_session()
     song_info = {}
 
@@ -37,7 +38,8 @@ async def get_song_info():
         if media_properties:
             song_info['title'] = media_properties.title
             if media_properties.album_artist:
-                song_info['artist'] = media_properties.album_artist.split(' — ')[0]
+                song_info['artist'] = media_properties.album_artist.split(' — ')[
+                    0]
             else:
                 song_info['artist'] = "Unknown Artist"
         else:
@@ -54,7 +56,8 @@ async def song_playing():
     Returns:
         bool: True if a song is playing, False otherwise or if the session is paused.
     """
-    session_manager = await mc.GlobalSystemMediaTransportControlsSessionManager.request_async()
+    sys_controls = mc.GlobalSystemMediaTransportControlsSessionManager
+    session_manager = await sys_controls.request_async()
     current_session = session_manager.get_current_session()
     if current_session:
         media_properties = await current_session.try_get_media_properties_async()
@@ -115,9 +118,9 @@ async def update_now_playing(last_fm, song_info):
     none_dict = dict(zip(previous_song_info, [None, None]))
     empty_dict = dict(zip(previous_song_info, ["", ""]))
     if (
-        await song_playing()
-        and song_info
-        and song_info not in (none_dict, empty_dict)
+            await song_playing()
+            and song_info
+            and song_info not in (none_dict, empty_dict)
     ):
         try:
             if song_info != previous_song_info:
@@ -188,11 +191,16 @@ async def scrobble_loop():
     last_fm = authenticate_last_fm()
 
     if last_fm is not None:
-        print("Successfully authenticated with Last.fm as " + last_fm.username + ".")
+        print("Successfully authenticated with Last.fm as " +
+              last_fm.username + ".")
 
         # Start the 'now playing' update thread
-        update_thread = threading.Thread(target=update_now_playing_thread, args=(last_fm,))
-        update_thread.daemon = True  # Set as daemon, so it terminates when the main thread ends
+        update_thread = threading.Thread(
+            target=update_now_playing_thread,
+            args=(last_fm,)
+        )
+        # Makes it terminate when the main thread ends
+        update_thread.daemon = True
         update_thread.start()
 
         while True:
@@ -205,7 +213,8 @@ async def scrobble_loop():
                     playback_time = 0
 
                     try:
-                        song_duration = get_song_duration(last_fm, current_song_info)
+                        song_duration = get_song_duration(
+                            last_fm, current_song_info)
                     except fm.WSError:
                         print(
                             "Error getting duration for:",
@@ -214,13 +223,13 @@ async def scrobble_loop():
                         )
                         print("Defaulting to 60 seconds.")
                         song_duration = 60
-
-                    while playback_time <= song_duration / 2 and await get_song_info():
+                    threshold = song_duration / 2
+                    while playback_time <= threshold and await get_song_info():
                         await asyncio.sleep(1)
                         playback_time = int(time.time()) - start_time
                         print("Playback time:", playback_time)
-                        print("Scrobble threshold:", song_duration / 2)
-                        if await song_playing() and playback_time >= (song_duration / 2):
+                        print("Scrobble threshold:", threshold)
+                        if await song_playing() and playback_time >= threshold:
                             await scrobble(last_fm, current_song_info)
                             start_time = int(time.time())
                             playback_time = 0
