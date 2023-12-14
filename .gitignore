@@ -3,3 +3,4 @@ auth.json
 .vscode
 .mypy_cache
 .wolf*
+__pycache__

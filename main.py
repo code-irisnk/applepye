@@ -57,13 +57,17 @@ async def song_playing():
     current_session = session_manager.get_current_session()
     if current_session:
         media_properties = await current_session.try_get_media_properties_async()
-        initial_position = current_session.get_timeline_properties().position.total_seconds()
+        timeline_properties = current_session.get_timeline_properties()
 
-        # Wait for 2 seconds
+        if timeline_properties:
+            initial_position = timeline_properties.position.total_seconds()
+        else:
+            initial_position = 0
         time.sleep(2)
-
-        # Check if the position has changed after 2 seconds
-        current_position = current_session.get_timeline_properties().position.total_seconds()
+        if timeline_properties:
+            current_position = timeline_properties.position.total_seconds()
+        else:
+            current_position = initial_position
         if "AppleMusic" in current_session.source_app_user_model_id:
             if media_properties and initial_position != current_position:
                 # print(current_session.source_app_user_model_id)
@@ -99,13 +103,6 @@ def authenticate_last_fm():
         print(f"Error: Missing key {e} in auth.json file")
     return None
 
-async def update_now_playing_thread(last_fm):
-    """Thread function to update 'now playing' every 10 seconds."""
-    while True:
-        song_info = await get_song_info()
-        await update_now_playing(last_fm, song_info)
-        time.sleep(10)
-
 async def update_now_playing(last_fm, song_info):
     """Updates the 'now playing' information on Last.fm without scrobbling.
 
@@ -126,14 +123,19 @@ async def update_now_playing(last_fm, song_info):
                     )
                     print("Updated 'now playing' on Last.fm:",
                         song_info['artist'],
-                        "-",
-                        song_info['title']
+                        "-", song_info['title']
                     )
-                    previous_song_info[0], previous_song_info[1] = song_info['artist'], song_info['title']
+                    previous_song_info[0] = song_info['artist']
+                    previous_song_info[1] = song_info['title']
             except fm.NetworkError as e:
                 print(f"Error updating 'now playing' on Last.fm: {e}")
 
-
+async def update_now_playing_thread(last_fm):
+    """Thread function to update 'now playing' every 10 seconds."""
+    while True:
+        song_info = await get_song_info()
+        await update_now_playing(last_fm, song_info)
+        time.sleep(10)
 
 async def scrobble(last_fm, song_info):
     """Scrobbles a song to Last.fm.
@@ -199,8 +201,7 @@ async def scrobble_loop():
                         print(
                             "Error getting duration for:",
                             current_song_info['artist'],
-                            "-",
-                            current_song_info['title']
+                            "-", current_song_info['title']
                         )
                         print("Defaulting to 60 seconds.")
                         song_duration = 60
@@ -223,7 +224,10 @@ async def scrobble_loop():
 
             await asyncio.sleep(5)
     else:
-        print("Last.fm authentication failed! Please check your credentials.")
+        print(
+            "Last.fm authentication failed!",
+            "Please check your credentials."
+            )
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
