@@ -1,5 +1,4 @@
-"""ApplePye
-"""
+"""ApplePye"""
 
 import asyncio
 import time
