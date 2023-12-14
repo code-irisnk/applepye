@@ -1,0 +1,5 @@
+auth.json
+.history
+.vscode
+.mypy_cache
+.wolf*
