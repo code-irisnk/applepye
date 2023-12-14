@@ -69,15 +69,11 @@ async def song_playing():
                 # print(current_session.source_app_user_model_id)
                 print("Song is playing on Apple Music.")
                 return True
-            else:
-                print("Song is paused on Apple Music.")
-                return False
-        else:
-            print("Song is not playing on Apple Music.")
+            print("Song is paused on Apple Music.")
             return False
-    else:
-        print("No app is playing music.")
-
+        print("Song is not playing on Apple Music.")
+        return False
+    print("No app is playing music.")
     return False
 
 def authenticate_last_fm():
@@ -118,15 +114,21 @@ async def update_now_playing(last_fm, song_info):
         song_info (dict): A dictionary containing the current song title and artist.
         last_known_song (list): A list containing the last known song title and artist.
     """
+    none_dict = dict(zip(last_known_song, [None, None]))
+    empty_dict = dict(zip(last_known_song, ["", ""]))
     if await song_playing() and song_info:  # Check if song_info is not empty
-        if song_info != dict(zip(last_known_song, [None, None])) and song_info != dict(zip(last_known_song, ["", ""])):
+        if song_info not in (none_dict, empty_dict):
             try:
-                if song_info['artist'] != last_known_song[0] or song_info['title'] != last_known_song[1]:
+                if song_info != last_known_song:
                     last_fm.update_now_playing(
                         artist=song_info['artist'],
                         title=song_info['title']
                     )
-                    print("Updated 'now playing' on Last.fm:", song_info['artist'], "-", song_info['title'])
+                    print("Updated 'now playing' on Last.fm:",
+                        song_info['artist'],
+                        "-",
+                        song_info['title']
+                    )
                     last_known_song[0], last_known_song[1] = song_info['artist'], song_info['title']
             except fm.NetworkError as e:
                 print(f"Error updating 'now playing' on Last.fm: {e}")
@@ -147,7 +149,12 @@ async def scrobble(last_fm, song_info):
             title=song_info['title'],
             timestamp=timestamp
         )
-        print("Scrobbled", song_info['artist'], "-", song_info['title'], "at", timestamp, "to Last.fm.")
+        print(
+            "Scrobbled", song_info['artist'],
+            "-", song_info['title'],
+            "at", timestamp,
+            "to Last.fm."
+            )
 
 def get_song_duration(last_fm, song_info):
     """Gets the duration of the currently playing song from Last.fm.
@@ -161,7 +168,7 @@ def get_song_duration(last_fm, song_info):
     """
     try:
         track = last_fm.get_track(song_info['artist'], song_info['title'])
-        song_duration = max(int(track.get_duration() / 1000), 60)  # Set a minimum duration of 60 seconds
+        song_duration = max(int(track.get_duration() / 1000), 60)
     except fm.WSError:
         song_duration = 60
     return song_duration
@@ -175,7 +182,7 @@ async def scrobble_loop():
         print("Successfully authenticated with Last.fm as " + last_fm.username + ".")
 
         # Start the 'now playing' update thread
-        asyncio.create_task(await update_now_playing_thread(last_fm))
+        asyncio.create_task(update_now_playing_thread(last_fm))
 
         while True:
             if is_apple_music_running():
@@ -184,29 +191,31 @@ async def scrobble_loop():
                 # Check if the player is currently playing
                 if await song_playing():
                     start_time = int(time.time())
-                    duration = 0
+                    playback_time = 0
 
                     try:
                         song_duration = get_song_duration(last_fm, current_song_info)
                     except fm.WSError:
+                        print(
+                            "Error getting duration for:",
+                            current_song_info['artist'],
+                            "-",
+                            current_song_info['title']
+                        )
+                        print("Defaulting to 60 seconds.")
                         song_duration = 60
 
-                    while duration <= song_duration / 2 and current_song_info == await get_song_info():
+                    while playback_time <= song_duration / 2 and await get_song_info():
                         await asyncio.sleep(1)
-                        duration = int(time.time()) - start_time
-
-                        try:
-                            song_duration = get_song_duration(last_fm, current_song_info)
-                        except fm.WSError:
-                            song_duration = 60
-
-                    # Check if the player is still playing and the song has played for at least 50%
-                    if await song_playing() and duration >= 0.5 * song_duration:
-                        await scrobble(last_fm, current_song_info)
-                        start_time = int(time.time())
-                        duration = 0
-                    else:
-                        print("Song playback didn't meet scrobbling criteria.")
+                        playback_time = int(time.time()) - start_time
+                        print("Playback time:", playback_time)
+                        print("Scrobble threshold:", song_duration / 2)
+                        if await song_playing() and playback_time >= (song_duration / 2):
+                            await scrobble(last_fm, current_song_info)
+                            start_time = int(time.time())
+                            playback_time = 0
+                        else:
+                            print("Song playback didn't meet scrobbling criteria.")
                 else:
                     print(int(time.time()), "Player is paused.")
             else:
