@@ -1,5 +1,4 @@
-"""ApplePye
-"""
+"""ApplePye"""
 
 import asyncio
 import time
@@ -184,8 +183,7 @@ def get_song_duration(last_fm, song_info):
 
 
 async def scrobble_loop():
-    """ The main scrobbling loop.
-    """
+    """The main scrobbling loop."""
     last_fm = authenticate_last_fm()
 
     if last_fm is not None:
