@@ -18,11 +18,12 @@ def is_apple_music_running():
     Returns:
         bool: True if Apple Music is running, False otherwise.
     """
-    return any(proc.name() == 'AppleMusic.exe' for proc in ps.process_iter(['pid', 'name']))
+    all_processes = ps.process_iter(['pid', 'name'])
+    return any(proc.name() == 'AppleMusic.exe' for proc in all_processes)
 
 
 async def get_song_info():
-    """Gets the currently playing song's title and artist from Windows Media Controls.
+    """Gets the currently playing song's title and artist from Windows' Media Controls.
 
     Returns:
         dict: A dictionary containing the song title and artist.
