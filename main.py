@@ -74,7 +74,6 @@ async def song_playing():
             current_position = initial_position
         if "AppleMusic" in current_session.source_app_user_model_id:
             if media_properties and initial_position != current_position:
-                # print(current_session.source_app_user_model_id)
                 print("Song is playing on Apple Music.")
                 return True
             print("Song is paused on Apple Music.")
