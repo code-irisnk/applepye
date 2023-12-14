@@ -18,10 +18,7 @@ def is_apple_music_running():
     Returns:
         bool: True if Apple Music is running, False otherwise.
     """
-    for proc in ps.process_iter(['pid', 'name']):
-        if proc.name() == 'AppleMusic.exe':
-            return True
-    return False
+    return any(proc.name() == 'AppleMusic.exe' for proc in ps.process_iter(['pid', 'name']))
 
 
 async def get_song_info():
