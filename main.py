@@ -72,7 +72,6 @@ async def song_playing():
             current_position = initial_position
         if "AppleMusic" in current_session.source_app_user_model_id:
             if media_properties and initial_position != current_position:
-                # print(current_session.source_app_user_model_id)
                 print("Song is playing on Apple Music.")
                 return True
             print("Song is paused on Apple Music.")
@@ -116,22 +115,25 @@ async def update_now_playing(last_fm, song_info):
     """
     none_dict = dict(zip(previous_song_info, [None, None]))
     empty_dict = dict(zip(previous_song_info, ["", ""]))
-    if await song_playing() and song_info:  # Check if song_info is not empty
-        if song_info not in (none_dict, empty_dict):
-            try:
-                if song_info != previous_song_info:
-                    last_fm.update_now_playing(
-                        artist=song_info['artist'],
-                        title=song_info['title']
-                    )
-                    print("Updated 'now playing' on Last.fm:",
-                          song_info['artist'],
-                          "-", song_info['title']
-                          )
-                    previous_song_info[0] = song_info['artist']
-                    previous_song_info[1] = song_info['title']
-            except fm.NetworkError as e:
-                print(f"Error updating 'now playing' on Last.fm: {e}")
+    if (
+        await song_playing()
+        and song_info
+        and song_info not in (none_dict, empty_dict)
+    ):
+        try:
+            if song_info != previous_song_info:
+                last_fm.update_now_playing(
+                    artist=song_info['artist'],
+                    title=song_info['title']
+                )
+                print("Updated 'now playing' on Last.fm:",
+                      song_info['artist'],
+                      "-", song_info['title']
+                      )
+                previous_song_info[0] = song_info['artist']
+                previous_song_info[1] = song_info['title']
+        except fm.NetworkError as e:
+            print(f"Error updating 'now playing' on Last.fm: {e}")
 
 
 async def update_now_playing_thread(last_fm):
@@ -183,8 +185,7 @@ def get_song_duration(last_fm, song_info):
 
 
 async def scrobble_loop():
-    """ The main scrobbling loop.
-    """
+    """The main scrobbling loop."""
     last_fm = authenticate_last_fm()
 
     if last_fm is not None:
