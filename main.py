@@ -3,14 +3,11 @@
 import asyncio
 import time
 import json
-import threading
 import pylast as fm
 import psutil as ps
 import winsdk.windows.media.control as mc
 
 previous_song_info = [None, None]
-
-
 def is_apple_music_running():
     """Checks if Apple Music is running on Windows.
 
@@ -49,6 +46,19 @@ async def get_song_info():
 
     return song_info
 
+async def get_song_position():
+    sys_controls = mc.GlobalSystemMediaTransportControlsSessionManager
+    session_manager = await sys_controls.request_async()
+    current_session = session_manager.get_current_session()
+    
+    if current_session:
+        
+        timeline_properties = current_session.get_timeline_properties()
+        
+        if timeline_properties:
+            return(timeline_properties.position.total_seconds())
+        else:
+            return(0)
 
 async def song_playing():
     """Checks if a song is currently playing in Apple Music.
@@ -59,22 +69,15 @@ async def song_playing():
     sys_controls = mc.GlobalSystemMediaTransportControlsSessionManager
     session_manager = await sys_controls.request_async()
     current_session = session_manager.get_current_session()
+    
     if current_session:
+        
         media_properties = await current_session.try_get_media_properties_async()
-        timeline_properties = current_session.get_timeline_properties()
-
-        if timeline_properties:
-            initial_position = timeline_properties.position.total_seconds()
-        else:
-            initial_position = 0
+        initial_position = await get_song_position()
         time.sleep(2)
-        if timeline_properties:
-            current_position = timeline_properties.position.total_seconds()
-        else:
-            current_position = initial_position
+        current_position = await get_song_position()
         if "AppleMusic" in current_session.source_app_user_model_id:
             if media_properties and initial_position != current_position:
-                print("Song is playing on Apple Music.")
                 return True
             print("Song is paused on Apple Music.")
             return False
@@ -142,7 +145,7 @@ async def update_now_playing_thread(last_fm):
     """Thread function to update 'now playing' every 10 seconds."""
     while True:
         song_info = await get_song_info()
-        asyncio.run(update_now_playing(last_fm, song_info))
+        await update_now_playing(last_fm, song_info)
         time.sleep(10)
 
 
@@ -166,7 +169,6 @@ async def scrobble(last_fm, song_info):
             "at", timestamp,
             "to Last.fm."
         )
-
 
 def get_song_duration(last_fm, song_info):
     """Gets the duration of the currently playing song from Last.fm.
@@ -195,14 +197,8 @@ async def scrobble_loop():
               last_fm.username + ".")
 
         # Start the 'now playing' update thread
-        update_thread = threading.Thread(
-            target=update_now_playing_thread,
-            args=(last_fm,)
-        )
-        # Makes it terminate when the main thread ends
-        update_thread.daemon = True
-        update_thread.start()
-
+        asyncio.create_task(update_now_playing_thread(last_fm))
+        
         while True:
             if is_apple_music_running():
                 current_song_info = await get_song_info()
@@ -223,7 +219,7 @@ async def scrobble_loop():
                         )
                         print("Defaulting to 60 seconds.")
                         song_duration = 60
-                    threshold = song_duration / 2
+                    threshold = int(song_duration / 2) - 1
                     while playback_time <= threshold and await get_song_info():
                         await asyncio.sleep(1)
                         playback_time = int(time.time()) - start_time
