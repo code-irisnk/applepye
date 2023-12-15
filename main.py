@@ -1,33 +1,53 @@
 """ApplePye"""
 
-import asyncio
+import sys
 import time
 import json
+import asyncio
+import platform
 import pylast as fm
 import windows_functions as win
-import platform
-
-if platform.system() == 'Windows':
-    print("Running on Windows")
 
 
-    async def get_song_info():
+async def get_song_info():
+    """Gets the currently playing song's title and artist
+    returns:
+        dict: A dictionary containing the song title and artist."""
+    if platform.system() == 'Windows':
         return await win.get_song_info()
+    sys.exit()
 
 
-    async def song_playing():
+async def song_playing():
+    """Checks if a song is currently playing in Apple Music.
+    Returns:
+        bool: True if a song is playing, False otherwise or if the session is paused."""
+    if platform.system() == 'Windows':
         return await win.song_playing()
+    sys.exit()
 
 
-    async def get_song_position():
+async def get_song_position():
+    """Gets the song's current position in seconds from Windows' Media Controls.
+    returns:
+        int: The song's current position in seconds."""
+    if platform.system() == 'Windows':
         return await win.get_song_position()
+    sys.exit()
 
 
-    def is_apple_music_running():
+def is_apple_music_running():
+    """Checks if Apple Music is running.
+    Returns:
+        bool: True if Apple Music is running, False otherwise."""
+    if platform.system() == 'Windows':
         return win.is_apple_music_running()
-else:
+    sys.exit()
+
+
+if platform.system() != 'Windows':
     print("Not running on Windows")
-    exit()
+    sys.exit()
 previous_song_info = [None, None]
 
 
@@ -50,8 +70,8 @@ def authenticate_last_fm():
         print("Error: auth.json file not found")
     except json.JSONDecodeError:
         print("Error: auth.json file is not in valid JSON format")
-    except KeyError as e:
-        print(f"Error: Missing key {e} in auth.json file")
+    except KeyError as err:
+        print(f"Error: Missing key {err} in auth.json file")
     return None
 
 
@@ -81,8 +101,8 @@ async def update_now_playing(last_fm, song_info):
                       )
                 previous_song_info[0] = song_info['artist']
                 previous_song_info[1] = song_info['title']
-        except fm.NetworkError as e:
-            print(f"Error updating 'now playing' on Last.fm: {e}")
+        except fm.NetworkError as err:
+            print(f"Error updating 'now playing' on Last.fm: {err}")
 
 
 async def update_now_playing_thread(last_fm):

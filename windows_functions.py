@@ -1,3 +1,4 @@
+"""This module contains functions that get data from Windows' Media Controls API."""
 import time
 import psutil as ps
 import winsdk.windows.media.control as mc
@@ -43,6 +44,10 @@ async def get_song_info():
 
 
 async def get_song_position():
+    """Gets the song's current position in seconds from Windows' Media Controls.
+    returns:
+        int: The song's current position in seconds.
+    """
     sys_controls = mc.GlobalSystemMediaTransportControlsSessionManager
     session_manager = await sys_controls.request_async()
     current_session = session_manager.get_current_session()
@@ -50,8 +55,7 @@ async def get_song_position():
         timeline_properties = current_session.get_timeline_properties()
         if timeline_properties:
             return timeline_properties.position.total_seconds()
-        else:
-            return 0
+        return 0
 
 
 async def song_playing():
