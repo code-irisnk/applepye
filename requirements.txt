@@ -1,4 +1,4 @@
-anyio==4.1.0
+anyio==4.3.0
 asyncio==3.4.3
 certifi==2023.11.17
 h11==0.14.0
